@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Service\StoreServiceRequest;
+use App\Http\Requests\Service\UpdateServiceRequest;
+use App\Models\Service;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 class ServiceController extends Controller
 {
     /**
@@ -11,7 +15,12 @@ class ServiceController extends Controller
      */
     public function index()
     {
-        //
+        $service = Service::all();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Lấy thành công!',
+            'data' => $service
+        ], 201);
     }
 
     /**
@@ -19,15 +28,42 @@ class ServiceController extends Controller
      */
     public function create()
     {
-        //
+       
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreServiceRequest $request)
     {
-        //
+        try {
+            $data = Service::pluck('name')->toArray();
+            
+            if (in_array($request->name, $data)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Dữ liệu đã tồn tại!',
+                ], 404);
+            }
+            $service =  DB::transaction(function () use ($request) {
+                $data = [
+                    'name' => $request->name,
+                    'price' => $request->price,
+                    "description" => $request->description,
+                ];
+                return Service::query()->create($data);
+            });
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Tạo thành công!',
+                'data' => $service
+            ], 201);
+        } catch (\Exception  $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create record: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -35,7 +71,18 @@ class ServiceController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $findDataByID = Service::find($id);
+        if (!$findDataByID) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dữ liệu không tồn tại!',
+            ], 404);
+        }
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Lấy thành công!',
+            'data' => $findDataByID
+        ], 201);
     }
 
     /**
@@ -49,9 +96,38 @@ class ServiceController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UpdateServiceRequest $request, string $id)
     {
-        //
+        try {
+            $findDataByID = Service::find($id);
+            if (!$findDataByID) {
+                return response()->json(['status' => 'error', 'message' => 'Dữ liệu tồn tại'], 404);
+            }
+
+             if (Str::is($findDataByID->name, $request->name)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Dữ liệu đã tồn tại!',
+                ], 404);
+            }
+            DB::transaction(function () use ($request, $findDataByID) {
+                $data = [
+                    'name' => $request->name,
+                    'price' => $request->price,
+                    'description' => $request->description,
+                ];
+                $findDataByID->update($data);     
+            });
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Sửa dữ liệu thành công!',
+            ], 201);
+        } catch (\Exception  $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update record: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -59,6 +135,22 @@ class ServiceController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        try {
+            $findDataById = Service::find($id);
+            if (!$findDataById) {
+                return response()->json(['status' => 'error', 'message' => 'dữ liệu không tồn tại'], 404);
+            }
+            $findDataById->update(['is_active' => false]);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Ngừng dữ liệu thành công!',
+            ], 201);
+        } catch (\Exception  $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update record: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
+

@@ -7,6 +7,7 @@ use App\Http\Requests\Device\UpdateDeviceRequest;
 use App\Models\Device;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DeviceController extends Controller
 {
@@ -34,6 +35,14 @@ class DeviceController extends Controller
     public function store(StoreDeviceRequest $request)
     {
         try {
+            $data = Device::pluck('name')->toArray();
+            
+            if (in_array($request->name, $data)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Dữ liệu đã tồn tại!',
+                ], 404);
+            }
             $device =  DB::transaction(function () use ($request) {
                 $dataDevice = [
                     'name' => $request->name,
@@ -65,7 +74,6 @@ class DeviceController extends Controller
         if (!$findDevice) {
             return response()->json([
                 'status' => 'error',
-                'status' => 'error',
                 'message' => 'Thiết bị không tồn tại!',
             ], 404);
         }
@@ -93,6 +101,13 @@ class DeviceController extends Controller
             $findDevice = Device::find($id);
             if (!$findDevice) {
                 return response()->json(['status' => 'error', 'message' => 'Thiết bị không tồn tại'], 404);
+            }
+
+            if (Str::is($findDevice->name, $request->name)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Dữ liệu đã tồn tại!',
+                ], 404);
             }
             DB::transaction(function () use ($request, $findDevice) {
 
